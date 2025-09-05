@@ -1,0 +1,15 @@
+{
+    "seurat_object": "SingleRCellTypes_SO.rds",
+    "output_file": "color_by_metadata_result.rds",
+    "samples_to_include": "E1,E2,E3,H1,H2,H3,T1,T2,T3",
+    "metadata_to_plot": "HPCA_main,BP_encode_main",
+    "number_of_columns_for_final_image": 0,
+    "show_labels": false,
+    "dot_size": 0.01,
+    "legend_text_size": 1,
+    "legend_position": "right",
+    "columns_to_summarize": [],
+    "summarization_cut_off": 5,
+    "save_the_entire_dataset": false,
+    "use_cite_seq": false
+}

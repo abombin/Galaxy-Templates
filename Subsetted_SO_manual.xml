@@ -1,0 +1,245 @@
+<tool id="subsetted_so" name="Subset Seurat Object" version="1.0.0">
+    <description>Filter and subset Seurat objects based on metadata criteria</description>
+    
+    <requirements>
+        <container type="docker">ghcr.io/nidap-community/scworkflow_extraction:latest</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <command detect_errors="exit_code">
+        <![CDATA[
+        cp '$params_json' config_used.json &&
+        Rscript --vanilla '$__tool_directory__/Subsetted_SO.R' '$params_json' 2>&1 | tee tool_stdout.txt
+        ]]>
+    </command>
+    
+    <configfiles>
+        <configfile name="params_json">
+{
+    "seurat_object": "${seurat_object}",
+    "category_to_filter": "${category_to_filter}",
+    "seed": ${seed},
+    "samples_to_include": "${samples_to_include}",
+    "sample_name": "${sample_name}",
+    "keep_or_remove": ${keep_or_remove},
+    "values_to_filter": ["${values_to_filter}"],
+    "greater_less_than": "${greater_less_than}",
+    "cut_off": ${cut_off},
+    "plot_as_interactive_plot": ${plot_as_interactive_plot},
+    "use_cite_seq_data": ${use_cite_seq_data},
+    "legend_position": "${legend_position}",
+    "legend_symbol_size": ${legend_symbol_size},
+    "number_of_legend_columns": ${number_of_legend_columns},
+    "dot_size": ${dot_size},
+    "dot_size_highlighted_cells": ${dot_size_highlighted_cells},
+    "colors": "${colors}",
+    "output_file": "subsetted_so_result.rds"
+}
+        </configfile>
+    </configfiles>
+    
+    <inputs>
+        <!-- Required inputs -->
+        <param name="seurat_object" type="data" format="rds" label="SingleR Annotated Seurat Object (RDS)" 
+               help="SingleR annotated Seurat object to be filtered and subset"/>
+        
+        <!-- Filtering parameters -->
+        <section name="filter_params" title="Filtering Parameters" expanded="true">
+            <param name="category_to_filter" type="text" value="HPCA_main" 
+                   label="Category to Filter"
+                   help="Metadata column to use for filtering (e.g., HPCA_main, cell_type)"/>
+            
+            <param name="values_to_filter" type="text" value="T_cells" 
+                   label="Values to Filter"
+                   help="Specific values in the category to filter (comma-separated if multiple)"/>
+            
+            <param name="keep_or_remove" type="boolean" checked="true" 
+                   label="Keep Selected Values"
+                   help="If true, keep the selected values; if false, remove them"/>
+        </section>
+        
+        <!-- Sample parameters -->
+        <section name="sample_params" title="Sample Parameters" expanded="true">
+            <param name="samples_to_include" type="text" 
+                   value="E1,E2,E3,H1,H2,H3,T1,T2,T3"
+                   label="Samples to Include"
+                   help="Comma-separated list of sample names to include in analysis"/>
+            
+            <param name="sample_name" type="text" value="orig_ident" 
+                   label="Sample Name Column"
+                   help="Metadata column containing sample identifiers"/>
+        </section>
+        
+        <!-- Numeric filtering -->
+        <section name="numeric_filter" title="Numeric Filtering (Alternative)" expanded="false">
+            <param name="greater_less_than" type="select" value="greater than"
+                   label="Comparison Type"
+                   help="For numeric filtering: compare values greater than or less than cutoff">
+                <option value="greater than" selected="true">Greater Than</option>
+                <option value="less than">Less Than</option>
+            </param>
+            
+            <param name="cut_off" type="float" value="0.5" min="0" max="10"
+                   label="Cutoff Value"
+                   help="Numeric threshold for filtering (used with numeric comparison)"/>
+        </section>
+        
+        <!-- Visualization parameters -->
+        <section name="viz_params" title="Visualization Parameters" expanded="false">
+            <param name="plot_as_interactive_plot" type="boolean" checked="false"
+                   label="Generate Interactive Plots"
+                   help="Create interactive plotly visualizations"/>
+            
+            <param name="legend_position" type="select" value="right"
+                   label="Legend Position">
+                <option value="right" selected="true">Right</option>
+                <option value="left">Left</option>
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+            </param>
+            
+            <param name="legend_symbol_size" type="integer" value="2" min="1" max="10"
+                   label="Legend Symbol Size"
+                   help="Size of symbols in the legend"/>
+            
+            <param name="number_of_legend_columns" type="integer" value="1" min="1" max="5"
+                   label="Legend Columns"
+                   help="Number of columns in the legend"/>
+            
+            <param name="dot_size" type="float" value="0.1" min="0.01" max="2.0"
+                   label="Dot Size"
+                   help="Size of points in scatter plots"/>
+            
+            <param name="dot_size_highlighted_cells" type="float" value="0.5" min="0.01" max="2.0"
+                   label="Highlighted Cell Dot Size"
+                   help="Size of highlighted points in plots"/>
+        </section>
+        
+        <!-- Advanced parameters -->
+        <section name="advanced_params" title="Advanced Parameters" expanded="false">
+            <param name="seed" type="integer" value="10" min="1" max="1000"
+                   label="Random Seed"
+                   help="Seed for reproducible results"/>
+            
+            <param name="use_cite_seq_data" type="boolean" checked="false"
+                   label="Use CITE-seq Data"
+                   help="Utilize CITE-seq protein data if available"/>
+            
+            <param name="colors" type="select" multiple="true"
+                   label="Color Palette"
+                   help="Colors to use for visualization (select multiple)">
+                <option value="aquamarine3" selected="true">Aquamarine</option>
+                <option value="salmon1" selected="true">Salmon</option>
+                <option value="lightskyblue3" selected="true">Light Sky Blue</option>
+                <option value="plum3" selected="true">Plum</option>
+                <option value="darkolivegreen3" selected="true">Dark Olive Green</option>
+                <option value="goldenrod1" selected="true">Goldenrod</option>
+                <option value="burlywood2" selected="true">Burlywood</option>
+                <option value="gray70" selected="true">Gray</option>
+                <option value="firebrick2" selected="true">Firebrick</option>
+                <option value="steelblue" selected="true">Steel Blue</option>
+                <option value="palegreen4" selected="true">Pale Green</option>
+                <option value="orchid4" selected="true">Orchid</option>
+                <option value="darkorange1" selected="true">Dark Orange</option>
+                <option value="yellow" selected="true">Yellow</option>
+                <option value="sienna" selected="true">Sienna</option>
+                <option value="palevioletred1" selected="true">Pale Violet Red</option>
+                <option value="gray60" selected="true">Medium Gray</option>
+                <option value="cyan4" selected="true">Cyan</option>
+                <option value="darkorange3" selected="true">Dark Orange</option>
+                <option value="mediumpurple3" selected="true">Medium Purple</option>
+                <option value="violetred2" selected="true">Violet Red</option>
+                <option value="olivedrab" selected="true">Olive Drab</option>
+                <option value="darkgoldenrod2" selected="true">Dark Goldenrod</option>
+                <option value="palegreen3" selected="true">Pale Green</option>
+                <option value="thistle3" selected="true">Thistle</option>
+                <option value="khaki1" selected="true">Khaki</option>
+                <option value="deeppink2" selected="true">Deep Pink</option>
+                <option value="chocolate3" selected="true">Chocolate</option>
+            </param>
+        </section>
+    </inputs>
+    
+    <outputs>
+        <data name="subsetted_seurat_object" format="rds" from_work_dir="subsetted_so_result.rds" 
+              label="Subsetted Seurat Object"/>
+
+        <data name="SubsetSO_Plots" format="pdf" from_work_dir="Rplots.pdf" label="SubsetSO Plots" />
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="SubsetSO Analysis Log"/>
+        
+        <data name="config_json" format="json" from_work_dir="config_used.json" 
+              label="SubsetSO Config"/>
+    </outputs>
+    
+    <tests>
+        <test>
+            <param name="seurat_object" value="test_seurat_annotated.rds"/>
+            <param name="category_to_filter" value="cell_type"/>
+            <param name="values_to_filter" value="T_cells"/>
+            <param name="keep_or_remove" value="true"/>
+            <param name="samples_to_include" value='c("E1","E2","E3")'/>
+            <param name="sample_name" value="orig_ident"/>
+            <output name="subsetted_seurat_object" file="expected_subset.rds" compare="sim_size"/>
+        </test>
+    </tests>
+    
+    <help>
+        <![CDATA[
+**Subset Seurat Object**
+
+This tool filters and subsets Seurat objects based on metadata criteria. It provides flexible filtering options and generates visualization plots showing before and after filtering results.
+
+**Key Features:**
+- Filter cells based on categorical metadata (e.g., cell types, conditions)
+- Select specific samples to include in the analysis  
+- Apply numeric thresholds for continuous variables
+- Generate UMAP and t-SNE visualization plots
+- Customize plot appearance and colors
+
+**Input:**
+- SingleR annotated Seurat object in RDS format
+
+**Filtering Options:**
+1. **Categorical Filtering**: Filter based on specific values in a metadata column
+   - Choose metadata column (e.g., "HPCA_main", "cell_type")
+   - Specify values to keep or remove (e.g., "T_cells", "B_cells")
+   - Toggle between keeping or removing selected values
+
+2. **Sample Selection**: Select which samples to include in the analysis
+   - Specify samples as R vector (e.g., c("E1","E2","E3"))
+   - Choose metadata column containing sample identifiers
+
+3. **Numeric Filtering**: Apply thresholds to continuous variables
+   - Set comparison type (greater than / less than)
+   - Define numeric cutoff value
+
+**Visualization:**
+- Generates before and after filtering plots
+- Supports both standard and interactive (plotly) visualizations
+- Customizable colors, legend position, and plot styling
+- Creates plots for both UMAP and t-SNE reductions
+
+**Output:**
+- Filtered Seurat object with subset of cells
+- Analysis log showing filtering statistics
+- Configuration file with parameters used
+
+**Example Usage:**
+To keep only T cells from samples E1, E2, E3:
+- Category to Filter: "HPCA_main" 
+- Values to Filter: "T_cells"
+- Keep Selected Values: Yes
+- Samples to Include: c("E1","E2","E3")
+
+This tool is part of the single-cell RNA-seq analysis workflow and works with SingleR annotated Seurat objects.
+        ]]>
+    </help>
+    
+    <citations>
+        <citation type="doi">10.1038/nbt.4096</citation>
+        <citation type="doi">10.1016/j.cell.2019.05.031</citation>
+        <citation type="doi">10.1186/s13059-021-02266-6</citation>
+    </citations>
+</tool>

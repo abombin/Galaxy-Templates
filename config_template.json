@@ -1,0 +1,12 @@
+{
+  "CombinedSO": "seurat_object_sub.rds",
+  "RDS": "CellDexDatabase.rds",
+  "Metadata": "CombClustNorm_Metadata.csv",
+  "species": "Human",
+  "useClusters": false,
+  "ClusterColumn": null,
+  "Legend_Dot_Size": 2,
+  "doFineTuning": false,
+  "Number_of_cells_per_partition": 400,
+  "output_file": "SingleRCellTypes_SO.rds"
+}

@@ -1,0 +1,121 @@
+<tool id="single_r_cell_types_so" name="Single R Cell Types Annotation" version="1.0.0">
+    <description>Annotate cell types using SingleR with Seurat objects</description>
+    
+    <requirements>
+        <container type="docker">ghcr.io/nidap-community/scworkflow_extraction:latest</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <command detect_errors="exit_code">
+        <![CDATA[
+        cp '$params_json' config_used.json &&
+        Rscript --vanilla '$__tool_directory__/SingleRCellTypes_SO.R' '$params_json' 2>&1 | tee tool_stdout.txt
+        ]]>
+    </command>
+    
+    <configfiles>
+        <configfile name="params_json">
+{
+    "CombinedSO": "${combined_so}",
+    "RDS": "${rds_database}",
+    "Metadata": "${metadata}",
+    "species": "${species}",
+    "useClusters": ${use_clusters},
+    "ClusterColumn": "${cluster_column}",
+    "Legend_Dot_Size": ${legend_dot_size},
+    "doFineTuning": ${do_fine_tuning},
+    "Number_of_cells_per_partition": ${cells_per_partition},
+    "output_file": "SingleRCellTypes_SO_result.rds"
+}
+        </configfile>
+    </configfiles>
+    
+    <inputs>
+        <!-- Required inputs -->
+        <param name="combined_so" type="data" format="rds" label="Seurat Object (RDS)" 
+               help="Combined Seurat object containing single-cell RNA-seq data"/>
+        
+        <param name="rds_database" type="data" format="rds" label="CellDex Database (RDS)" 
+               help="Pre-saved CellDex reference database for cell type annotation"/>
+        
+        <param name="metadata" type="data" format="csv,tsv,tabular" label="Metadata File" 
+               help="CSV file containing cell metadata"/>
+        
+        <!-- Optional parameters with defaults -->
+        <param name="species" type="select" value="Human" label="Species" 
+               help="Species for cell type annotation">
+            <option value="Human" selected="true">Human</option>
+            <option value="Mouse">Mouse</option>
+        </param>
+        
+        <param name="use_clusters" type="boolean" checked="false" label="Use Clusters" 
+               help="Whether to use existing clusters for annotation"/>
+        
+        <param name="cluster_column" type="text" value="" label="Cluster Column Name" 
+               help="Name of the column containing cluster information (required if 'Use Clusters' is selected)"
+               optional="true">
+            <validator type="expression" message="Cluster column name is required when 'Use Clusters' is selected">not use_clusters or value.strip()</validator>
+        </param>
+        
+        <param name="legend_dot_size" type="integer" value="2" min="1" max="10" 
+               label="Legend Dot Size" help="Size of dots in legend plots"/>
+        
+        <param name="do_fine_tuning" type="boolean" checked="false" label="Enable Fine Tuning" 
+               help="Whether to perform fine-tuning during annotation"/>
+        
+        <param name="cells_per_partition" type="integer" value="400" min="100" max="2000" 
+               label="Number of Cells per Partition" 
+               help="Number of cells to process per partition for memory management"/>
+    </inputs>
+    
+    <outputs>
+        <data name="annotated_seurat" format="rds" from_work_dir="SingleRCellTypes_SO_result.rds" 
+              label="Annotated Seurat Object"/>
+
+        <data name="SingleR_Plots" format="pdf" from_work_dir="Rplots.pdf" label="SingleR Plots" />
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="SingleR Log"/>
+        
+        <data name="config_json" format="json" from_work_dir="config_used.json" 
+              label="SingleR Config"/>
+    </outputs>
+    
+    <help>
+        <![CDATA[
+**Single R Cell Types Annotation Tool**
+
+This tool performs automated cell type annotation using SingleR on Seurat objects containing single-cell RNA-seq data.
+
+**Inputs:**
+
+- **Seurat Object (RDS)**: A Seurat object containing single-cell RNA-seq data
+- **CellDex Database (RDS)**: Pre-saved CellDex reference database for cell type annotation
+- **Metadata File**: CSV file containing cell metadata
+
+**Parameters:**
+
+- **Species**: Choose between Human or Mouse for species-specific annotation
+- **Use Clusters**: Enable if you want to use existing cluster information for annotation
+- **Cluster Column Name**: Required if "Use Clusters" is enabled - specify the column name containing cluster information
+- **Legend Dot Size**: Controls the size of dots in visualization plots (1-10)
+- **Enable Fine Tuning**: Perform fine-tuning during the annotation process for better accuracy
+- **Number of Cells per Partition**: Controls memory usage by processing cells in batches
+
+**Outputs:**
+
+- **Annotated Seurat Object**: The input Seurat object with added cell type annotations
+- **Analysis Log**: Log file containing processing information and any messages
+
+**Requirements:**
+
+This tool requires the SCWorkflow extraction container with SingleR and related dependencies.
+
+For more information about SingleR, visit: https://bioconductor.org/packages/SingleR/
+        ]]>
+    </help>
+    
+    <citations>
+        <citation type="doi">10.1038/s41590-018-0276-y</citation>
+    </citations>
+</tool>

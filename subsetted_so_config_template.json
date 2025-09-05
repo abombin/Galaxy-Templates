@@ -1,0 +1,20 @@
+{
+    "seurat_object": "SingleRCellTypes_SO.rds",
+    "output_file": "subsetted_so_result.rds",
+    "category_to_filter": "HPCA_main",
+    "seed": 10,
+    "samples_to_include": "E1,E2,E3,H1,H2,H3,T1,T2,T3",
+    "sample_name": "orig_ident",
+    "keep_or_remove": true,
+    "values_to_filter": ["T_cells"],
+    "greater_less_than": "greater than",
+    "cut_off": 0.5,
+    "plot_as_interactive_plot": false,
+    "use_cite_seq_data": false,
+    "legend_position": "right",
+    "legend_symbol_size": 2,
+    "number_of_legend_columns": 1,
+    "dot_size": 0.1,
+    "dot_size_highlighted_cells": 0.5,
+    "colors": ["aquamarine3", "salmon1", "lightskyblue3", "plum3", "darkolivegreen3", "goldenrod1", "burlywood2", "gray70", "firebrick2", "steelblue", "palegreen4", "orchid4", "darkorange1", "yellow", "sienna", "palevioletred1", "gray60", "cyan4", "darkorange3", "mediumpurple3", "violetred2", "olivedrab", "darkgoldenrod2", "darkgoldenrod", "gray40", "palegreen3", "thistle3", "khaki1", "deeppink2", "chocolate3", "paleturquoise3", "wheat1", "lightsteelblue", "salmon", "sandybrown", "darkolivegreen2", "thistle2", "gray85", "orchid3", "darkseagreen1", "lightgoldenrod1", "lightskyblue2", "dodgerblue3", "darkseagreen3", "forestgreen", "lightpink2", "mediumpurple4", "lightpink1", "thistle", "navajowhite", "lemonchiffon", "bisque2", "mistyrose", "gray95", "lightcyan3", "peachpuff2", "lightsteelblue2", "lightyellow2", "moccasin", "gray80", "antiquewhite2", "lightgrey"]
+}

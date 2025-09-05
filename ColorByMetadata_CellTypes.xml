@@ -1,0 +1,205 @@
+<tool id="color_by_metadata" name="Color by Metadata Visualization" version="1.0.0">
+    <description>Create dimensionality reduction plots colored by metadata columns</description>
+    
+    <requirements>
+        <container type="docker">ghcr.io/nidap-community/scworkflow_extraction:latest</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <command detect_errors="exit_code">
+        <![CDATA[
+        cp '$params_json' config_used.json &&
+        Rscript --vanilla '$__tool_directory__/ColorByMetadata_CellTypes.R' '$params_json' 2>&1 | tee tool_stdout.txt
+        ]]>
+    </command>
+    
+    <configfiles>
+        <configfile name="params_json">
+{
+    "seurat_object": "${seurat_object}",
+    "samples_to_include": "${samples_to_include}",
+    "metadata_to_plot": "${metadata_to_plot}",
+    "number_of_columns_for_final_image": ${number_of_columns_for_final_image},
+    "show_labels": ${show_labels},
+    "dot_size": ${dot_size},
+    "legend_text_size": ${legend_text_size},
+    "legend_position": "${legend_position}",
+    "columns_to_summarize": "${columns_to_summarize}",
+    "summarization_cut_off": ${summarization_cut_off},
+    "save_the_entire_dataset": ${save_the_entire_dataset},
+    "use_cite_seq": ${use_cite_seq},
+    "output_file": "color_by_metadata_result.rds"
+}
+        </configfile>
+    </configfiles>
+    
+    <inputs>
+        <!-- Required inputs -->
+        <param name="seurat_object" type="data" format="rds" label="SingleR Annotated Seurat Object (RDS)" 
+               help="SingleR annotated Seurat object containing single-cell RNA-seq data"/>
+        
+        <!-- Sample and metadata parameters -->
+        <section name="data_params" title="Data Selection Parameters" expanded="true">
+            <param name="samples_to_include" type="text" 
+                   value="E1,E2,E3,H1,H2,H3,T1,T2,T3" 
+                   label="Samples to Include"
+                   help="Comma-separated list of sample names to include in visualization"/>
+            
+            <param name="metadata_to_plot" type="text" 
+                   value="HPCA_main,BP_encode_main" 
+                   label="Metadata Columns to Plot"
+                   help="Comma-separated list of metadata column names to visualize (e.g., cell_type,condition)"/>
+        </section>
+        
+        <!-- Visualization parameters -->
+        <section name="viz_params" title="Visualization Parameters" expanded="true">
+            <param name="number_of_columns_for_final_image" type="integer" value="0" min="0" max="10"
+                   label="Number of Columns in Plot Layout"
+                   help="Number of columns for arranging multiple plots (0 = auto-calculate)"/>
+            
+            <param name="show_labels" type="boolean" checked="false"
+                   label="Show Cell Labels"
+                   help="Display labels on individual cells in the plots"/>
+            
+            <param name="dot_size" type="float" value="0.01" min="0.001" max="2.0"
+                   label="Dot Size"
+                   help="Size of points in the scatter plots"/>
+        </section>
+        
+        <!-- Legend parameters -->
+        <section name="legend_params" title="Legend Parameters" expanded="false">
+            <param name="legend_text_size" type="float" value="1.0" min="0.1" max="5.0"
+                   label="Legend Text Size"
+                   help="Size of text in the legend"/>
+            
+            <param name="legend_position" type="select" value="right"
+                   label="Legend Position">
+                <option value="right" selected="true">Right</option>
+                <option value="left">Left</option>
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+                <option value="none">No Legend</option>
+            </param>
+        </section>
+        
+        <!-- Summarization parameters -->
+        <section name="summary_params" title="Data Summarization (Optional)" expanded="false">
+            <param name="columns_to_summarize" type="select" multiple="true" optional="true"
+                   label="Columns to Summarize"
+                   help="Select metadata columns to summarize (top N values will be shown, rest as 'Other')">
+                <option value="HPCA_main">HPCA Main</option>
+                <option value="BP_encode_main">BP Encode Main</option>
+                <option value="cell_type">Cell Type</option>
+                <option value="seurat_clusters">Seurat Clusters</option>
+                <option value="orig_ident">Original Identity</option>
+                <option value="sample">Sample</option>
+            </param>
+            
+            <param name="summarization_cut_off" type="integer" value="5" min="1" max="50"
+                   label="Summarization Cutoff"
+                   help="Number of top categories to show before grouping remainder as 'Other'"/>
+        </section>
+        
+        <!-- Advanced parameters -->
+        <section name="advanced_params" title="Advanced Parameters" expanded="false">
+            <param name="save_the_entire_dataset" type="boolean" checked="false"
+                   label="Save Entire Seurat Object"
+                   help="If true, save the entire Seurat object; if false, save only metadata"/>
+            
+            <param name="use_cite_seq" type="boolean" checked="false"
+                   label="Use CITE-seq Data"
+                   help="Use CITE-seq protein data for visualization if available"/>
+        </section>
+    </inputs>
+    
+    <outputs>
+        <data name="result_data" format="rds" from_work_dir="color_by_metadata_result.rds" 
+              label="Color by Metadata Result"/>
+
+        <data name="Metadata_plots" format="pdf" from_work_dir="Rplots.pdf" label="Metadata Plots" />
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="Metadata Analysis Log"/>
+        
+        <data name="config_json" format="json" from_work_dir="config_used.json" 
+              label="Metadata Config"/>
+    </outputs>
+    
+    <tests>
+        <test>
+            <param name="seurat_object" value="test_seurat_annotated.rds"/>
+            <param name="samples_to_include" value='c("E1","E2","E3")'/>
+            <param name="metadata_to_plot" value='c("HPCA_main","cell_type")'/>
+            <param name="number_of_columns_for_final_image" value="0"/>
+            <param name="show_labels" value="false"/>
+            <param name="dot_size" value="0.01"/>
+            <param name="legend_position" value="right"/>
+            <param name="save_the_entire_dataset" value="false"/>
+            <output name="result_data" file="expected_metadata_plots.rds" compare="sim_size"/>
+        </test>
+    </tests>
+    
+    <help>
+        <![CDATA[
+**Color by Metadata Visualization**
+
+This tool creates dimensionality reduction plots (UMAP, t-SNE, and PCA) colored by different metadata columns from your Seurat object. It's designed to visualize how different cell annotations, conditions, or other metadata variables are distributed in your single-cell dataset.
+
+**Key Features:**
+- Generate plots for multiple dimensionality reductions (UMAP, t-SNE, PCA)
+- Color cells by any metadata column(s)
+- Support for multiple metadata columns simultaneously
+- Flexible sample selection
+- Data summarization options for categorical variables
+- Customizable plot appearance
+
+**Input:**
+- SingleR annotated Seurat object in RDS format with metadata
+
+**Main Parameters:**
+
+**Data Selection:**
+- **Samples to Include**: R vector of sample names to visualize (e.g., c("E1","E2","E3"))
+- **Metadata Columns to Plot**: R vector of metadata column names to visualize (e.g., c("HPCA_main","cell_type"))
+
+**Visualization:**
+- **Plot Layout**: Number of columns for arranging multiple plots (0 = auto-calculate)
+- **Show Labels**: Display labels on individual cells
+- **Dot Size**: Size of points in scatter plots
+
+**Summarization (Optional):**
+- **Columns to Summarize**: For categorical data with many categories
+- **Summarization Cutoff**: Show top N categories, group rest as "Other"
+
+**Output Options:**
+- **Save Entire Dataset**: Choose between full Seurat object or metadata only
+- **CITE-seq Support**: Use protein data for visualization if available
+
+**Output:**
+- Result data (Seurat object or metadata table)
+- Analysis log with processing details
+- Configuration file used
+
+**Example Usage:**
+To visualize cell types and conditions across samples E1-E3:
+- Samples to Include: c("E1","E2","E3")
+- Metadata to Plot: c("HPCA_main","condition")
+- This will create separate plots for each metadata column showing the distribution of categories
+
+**Use Cases:**
+- Compare cell type distributions across samples
+- Visualize experimental conditions in reduced dimension space
+- Assess clustering quality by overlaying annotations
+- Create publication-ready dimensionality reduction plots
+
+This tool is part of the single-cell RNA-seq analysis workflow and works best with SingleR annotated Seurat objects containing rich metadata.
+        ]]>
+    </help>
+    
+    <citations>
+        <citation type="doi">10.1038/s41590-018-0276-y</citation>
+        <citation type="doi">10.1016/j.cell.2019.05.031</citation>
+        <citation type="doi">10.1038/nbt.4096</citation>
+        <citation type="doi">10.1186/s13059-021-02266-6</citation>
+    </citations>
+</tool>
