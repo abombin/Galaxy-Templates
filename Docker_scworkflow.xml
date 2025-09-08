@@ -1,0 +1,17 @@
+<tool id="docker-scworkflow" name="Docker Hello Scworkflow" version="1.0.0">
+    <requirements>
+        <container type="docker">ghcr.io/nidap-community/scworkflow_extraction:latest</container>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        cat /etc/os-release > '$out_file1' &&
+        Rscript --version >> '$out_file1' 2>&1
+    ]]></command>
+    <inputs>
+    </inputs>
+    <outputs>
+        <data name="out_file1" format="txt" label="Output from Docker Hello" />
+    </outputs>
+    <help><![CDATA[
+            This is a test tool that uses the Docker image hello-world:latest.
+    ]]></help>
+</tool>
