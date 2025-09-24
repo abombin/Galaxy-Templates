@@ -3,7 +3,7 @@
         <container type="docker">nciccbr/scworkflow:v1.0.2-galaxy-2</container>
     </requirements>
     <command detect_errors="exit_code"><![CDATA[
-        uname -a > '$out_file1' &&
+        cat /etc/os-release > '$out_file1' &&
         Rscript --version >> '$out_file1' 2>&1
     ]]></command>
     <inputs>
