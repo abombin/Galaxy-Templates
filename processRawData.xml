@@ -1,0 +1,158 @@
+<tool id="process_raw_data" name="Process Raw Data" version="1.0.0">
+    <description>Process single-cell RNA-seq raw data and create Seurat objects</description>
+    
+    <requirements>
+        <container type="docker">nciccbr/scworkflow:v1.0.2_79db6d0</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <command detect_errors="exit_code">
+        <![CDATA[
+        ## Create symbolic links with original filenames
+        #for $input_item in $input_files
+        ln -s "${input_item.input_file}" "${input_item.input_file.element_identifier}" &&
+        #end for
+
+        ## Create JSON config file
+        echo '{
+            "input": [
+                #set $comma = ""
+                #for $input_item in $input_files
+                ${comma}"${input_item.input_file.element_identifier}"
+                #set $comma = ","
+                #end for
+            ],
+            "sample.metadata.table": #if $sample_metadata_table#"${sample_metadata_table}"#else#null#end if#,
+            "sample.name.column": #if str($sample_name_column).strip()#"${sample_name_column}"#else#null#end if#,
+            "organism": "${organism}",
+            "rename.col": #if str($rename_col).strip()#"${rename_col}"#else#null#end if#,
+            "keep": ${keep},
+            "file.filter.regex": [
+                #set $comma = ""
+                #for $regex in $file_filter_regex
+                ${comma}"${regex.pattern}"
+                #set $comma = ","
+                #end for
+            ],
+            "split.h5": ${split_h5},
+            "cell.hash": ${cell_hash},
+            "do.normalize.data": ${do_normalize_data},
+            "object_output_rds": "processRawData_result.rds"
+        }' > config_used.json &&
+        
+        ## Run scworkflow
+        /opt2/conda/lib/R/library/SCWorkflow/exec/scworkflow processRawData --json=config_used.json 2>&1 | tee tool_stdout.txt && 
+        Rscript --vanilla $__tool_directory__/Convert_to_a3.R
+        ]]>
+    </command>
+    
+    <inputs>
+        <!-- Required inputs -->
+        <repeat name="input_files" title="Input Files" min="1" default="1">
+            <param name="input_file" type="data" format="h5,rds,csv" 
+                   label="Input File" 
+                   help="H5 files for scRNA-seq data, RDS files for Seurat objects, or CSV files for TCR metadata"/>
+        </repeat>
+        
+        <!-- Optional metadata -->
+        <param name="sample_metadata_table" type="data" format="csv,tsv,tabular" 
+               label="Sample Metadata Table" optional="true"
+               help="A table of sample metadata to append to the Seurat Object(s)"/>
+        
+        <param name="sample_name_column" type="text" value="" 
+               label="Sample Name Column" optional="true"
+               help="The column of the metadata table that contains sample names matching the orig.idents"/>
+        
+        <!-- Required parameters with defaults -->
+        <param name="organism" type="select" value="Human" label="Organism" 
+               help="Select species for analysis">
+            <option value="Human" selected="true">Human</option>
+            <option value="Mouse">Mouse</option>
+        </param>
+        
+        <!-- Optional parameters -->
+        <param name="rename_col" type="text" value="" label="Rename Column" 
+               optional="true"
+               help="Column name from metadata table that contains new sample names"/>
+        
+        <param name="keep" type="boolean" checked="true" label="Keep Files" 
+               help="If TRUE, keep files when pattern is found. If FALSE, remove files when pattern is found"/>
+        
+        <repeat name="file_filter_regex" title="File Filter Regex" min="0" default="0">
+            <param name="pattern" type="text" label="Pattern" 
+                   help="Regular expression pattern to filter sample names"/>
+        </repeat>
+        
+        <param name="split_h5" type="boolean" checked="false" label="Split H5" 
+               help="If TRUE, split H5 into individual files"/>
+        
+        <param name="cell_hash" type="boolean" checked="false" label="Cell Hashtags" 
+               help="If TRUE, dataset contains cell hashtags"/>
+        
+        <param name="do_normalize_data" type="boolean" checked="true" label="Normalize Data" 
+               help="If TRUE, counts table will be log2 normalized. Set to FALSE if data is already normalized"/>
+    </inputs>
+    
+    <outputs>
+        <data name="processed_seurat" format="rds" from_work_dir="processRawData_result.rds" 
+              label="Processed Seurat Object"/>
+        
+        <data name="raw_data_plots" format="pdf" from_work_dir="plots.pdf" 
+              label="Raw Data Plots"/>
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="Process Raw Data Log"/>
+        
+        <data name="config_json" format="json" from_work_dir="config_used.json" 
+              label="Process Raw Data Config"/>
+    </outputs>
+    
+    <help>
+        <![CDATA[
+**Process Raw Data Tool**
+
+This tool processes single-cell RNA-seq raw data and creates Seurat objects. It is Step 1 in the basic Single-Cell RNA-seq workflow and returns data as a Seurat Object, the basic data structure for Seurat Single Cell analysis.
+
+**Inputs:**
+
+- **Input Files**: Vector of scRNA-Seq .h5 files, Seurat objects (.rds), or TCR metadata (.csv) files
+- **Sample Metadata Table**: Optional table of sample metadata to append to the Seurat Object(s)
+- **Sample Name Column**: Column name in metadata table containing sample names matching orig.idents
+
+**Parameters:**
+
+- **Organism**: Select Human or Mouse for species-specific analysis
+- **Rename Column**: Optional column name from metadata table containing new sample names
+- **Keep Files**: Whether to keep (TRUE) or remove (FALSE) files matching the filter pattern
+- **File Filter Regex**: Regular expression patterns to filter sample names
+- **Split H5**: Whether to split H5 files into individual samples
+- **Cell Hashtags**: Enable if dataset contains cell hashtags
+- **Normalize Data**: Whether to log2 normalize the counts table
+
+**Outputs:**
+
+- **Processed Seurat Object**: Seurat object with processed single-cell data
+- **Quality Control Plots**: PDF file containing QC visualizations including scatter plots, histograms, and violin plots
+- **Process Log**: Log file containing processing information and any messages
+- **Config JSON**: Configuration file used for the analysis
+
+**Features:**
+
+- Log normalization of count data
+- Quality control metric calculation (mitochondrial %, genes per UMI)
+- Cell cycle scoring
+- Support for CITE-seq and HTO data
+- TCR metadata integration
+- Comprehensive QC visualizations
+
+**Requirements:**
+
+This tool uses the SCWorkflow container with Seurat and related dependencies for single-cell RNA-seq analysis.
+        ]]>
+    </help>
+    
+    <citations>
+        <citation type="doi">10.1038/s41587-019-0114-2</citation>
+        <citation type="doi">10.1016/j.cell.2019.05.031</citation>
+    </citations>
+</tool>

@@ -1,0 +1,329 @@
+<tool id="filter_qc" name="Filter QC Samples" version="1.0.0">
+    <description>Filters cells and genes for each sample and generates QC plots</description>
+    
+    <requirements>
+        <container type="docker">nciccbr/scworkflow:v1.0.2_79db6d0</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <command detect_errors="exit_code">
+        <![CDATA[
+        ## Create symbolic link with original filename
+        ln -s "${object_input_rds}" "${object_input_rds.element_identifier}" &&
+
+        ## Create JSON config file
+        echo '{
+            "object_input_rds": "${object_input_rds.element_identifier}",
+            "min.cells": ${filter_params.min_cells},
+            "filter.vdj.genes": #if $filter_params.filter_vdj_genes#true#else#false#end if#,
+            "nfeature.limits": [
+                #if str($filter_params.nfeature_limits_min).strip()#${filter_params.nfeature_limits_min}#else#null#end if#,
+                #if str($filter_params.nfeature_limits_max).strip()#${filter_params.nfeature_limits_max}#else#null#end if#
+            ],
+            "mad.nfeature.limits": [${filter_params.mad_nfeature_limits_min}, ${filter_params.mad_nfeature_limits_max}],
+            "ncounts.limits": [
+                #if str($filter_params.ncounts_limits_min).strip()#${filter_params.ncounts_limits_min}#else#null#end if#,
+                #if str($filter_params.ncounts_limits_max).strip()#${filter_params.ncounts_limits_max}#else#null#end if#
+            ],
+            "mad.ncounts.limits": [${filter_params.mad_ncounts_limits_min}, ${filter_params.mad_ncounts_limits_max}],
+            "mitoch.limits": [${filter_params.mitoch_limits_min}, ${filter_params.mitoch_limits_max}],
+            "mad.mitoch.limits": [
+                #if str($filter_params.mad_mitoch_limits_min).strip()#${filter_params.mad_mitoch_limits_min}#else#null#end if#,
+                #if str($filter_params.mad_mitoch_limits_max).strip()#${filter_params.mad_mitoch_limits_max}#else#null#end if#
+            ],
+            "complexity.limits": [
+                #if str($filter_params.complexity_limits_min).strip()#${filter_params.complexity_limits_min}#else#null#end if#,
+                #if str($filter_params.complexity_limits_max).strip()#${filter_params.complexity_limits_max}#else#null#end if#
+            ],
+            "mad.complexity.limits": [
+                #if str($filter_params.mad_complexity_limits_min).strip()#${filter_params.mad_complexity_limits_min}#else#null#end if#,
+                #if str($filter_params.mad_complexity_limits_max).strip()#${filter_params.mad_complexity_limits_max}#else#null#end if#
+            ],
+            "topNgenes.limits": [
+                #if str($filter_params.topNgenes_limits_min).strip()#${filter_params.topNgenes_limits_min}#else#null#end if#,
+                #if str($filter_params.topNgenes_limits_max).strip()#${filter_params.topNgenes_limits_max}#else#null#end if#
+            ],
+            "mad.topNgenes.limits": [${filter_params.mad_topNgenes_limits_min}, ${filter_params.mad_topNgenes_limits_max}],
+            "n.topgenes": ${filter_params.n_topgenes},
+            "do.doublets.filter": #if $filter_params.do_doublets_filter#true#else#false#end if#,
+            "plot.outliers": "${dimred_params.plot_outliers}",
+            "group.column": #if str($dimred_params.group_column).strip()#"${dimred_params.group_column}"#else#null#end if#,
+            "nfeatures": ${dimred_params.nfeatures},
+            "low_cut": ${dimred_params.low_cut},
+            "high_cut": ${dimred_params.high_cut},
+            "low_cut_disp": ${dimred_params.low_cut_disp},
+            "high_cut_disp": ${dimred_params.high_cut_disp},
+            "selection_method": "${dimred_params.selection_method}",
+            "npcs": ${dimred_params.npcs},
+            "integratedata": #if $dimred_params.integratedata#true#else#false#end if#,
+            "clust_res_low": ${dimred_params.clust_res_low},
+            "clust_res_high": ${dimred_params.clust_res_high},
+            "clust_res_bin": ${dimred_params.clust_res_bin},
+            "only_var_genes": #if $dimred_params.only_var_genes#true#else#false#end if#,
+            "seed_for_PCA": ${dimred_params.seed_for_PCA},
+            "seed_for_TSNE": ${dimred_params.seed_for_TSNE},
+            "seed_for_UMAP": ${dimred_params.seed_for_UMAP},
+            "object_output_rds": "filterQC_result.rds"
+        }' > config_used.json &&
+        
+        ## Run scworkflow filterQC
+        /opt2/conda/lib/R/library/SCWorkflow/exec/scworkflow filterQC --json=config_used.json 2>&1 | tee tool_stdout.txt
+        ]]>
+    </command>
+    
+    <inputs>
+        <!-- Required input -->
+        <param name="object_input_rds" type="data" format="rds" 
+               label="Seurat Object Input" 
+               help="RDS file containing a list of Seurat objects for each sample"/>
+        
+        <!-- Filter Parameters -->
+        <section name="filter_params" title="Cell and Gene Filter Parameters" expanded="true">
+            <param name="min_cells" type="integer" value="20" min="0" 
+                   label="Minimum Cells per Gene" 
+                   help="Filter out genes found in less than this number of cells"/>
+            
+            <param name="filter_vdj_genes" type="boolean" checked="false" 
+                   label="Filter VDJ Genes" 
+                   help="Remove VDJ genes from the scRNA transcriptome assay to prevent clustering bias in T-cells"/>
+            
+            <!-- nFeature limits -->
+            <param name="nfeature_limits_min" type="integer" value="" optional="true" 
+                   label="nFeature Lower Limit" 
+                   help="Lower limit for number of genes per cell (leave empty for no limit)"/>
+            <param name="nfeature_limits_max" type="integer" value="" optional="true" 
+                   label="nFeature Upper Limit" 
+                   help="Upper limit for number of genes per cell (leave empty for no limit)"/>
+            <param name="mad_nfeature_limits_min" type="float" value="5" 
+                   label="MAD nFeature Lower Limit" 
+                   help="Median Absolute Deviations below median for nFeature filtering"/>
+            <param name="mad_nfeature_limits_max" type="float" value="5" 
+                   label="MAD nFeature Upper Limit" 
+                   help="Median Absolute Deviations above median for nFeature filtering"/>
+            
+            <!-- nCounts limits -->
+            <param name="ncounts_limits_min" type="integer" value="" optional="true" 
+                   label="nCounts Lower Limit" 
+                   help="Lower limit for total UMI per cell (leave empty for no limit)"/>
+            <param name="ncounts_limits_max" type="integer" value="" optional="true" 
+                   label="nCounts Upper Limit" 
+                   help="Upper limit for total UMI per cell (leave empty for no limit)"/>
+            <param name="mad_ncounts_limits_min" type="float" value="5" 
+                   label="MAD nCounts Lower Limit" 
+                   help="Median Absolute Deviations below median for nCounts filtering"/>
+            <param name="mad_ncounts_limits_max" type="float" value="5" 
+                   label="MAD nCounts Upper Limit" 
+                   help="Median Absolute Deviations above median for nCounts filtering"/>
+            
+            <!-- Mitochondrial limits -->
+            <param name="mitoch_limits_min" type="float" value="0" 
+                   label="Mitochondrial % Lower Limit" 
+                   help="Lower limit for mitochondrial gene percentage"/>
+            <param name="mitoch_limits_max" type="float" value="8" 
+                   label="Mitochondrial % Upper Limit" 
+                   help="Upper limit for mitochondrial gene percentage"/>
+            <param name="mad_mitoch_limits_min" type="float" value="" optional="true" 
+                   label="MAD Mitochondrial Lower Limit" 
+                   help="MAD below median for mitochondrial % (leave empty for no limit)"/>
+            <param name="mad_mitoch_limits_max" type="float" value="5" 
+                   label="MAD Mitochondrial Upper Limit" 
+                   help="MAD above median for mitochondrial % filtering"/>
+            
+            <!-- Complexity limits -->
+            <param name="complexity_limits_min" type="float" value="" optional="true" 
+                   label="Complexity Lower Limit" 
+                   help="Lower limit for cell complexity (genes per UMI) - set to 0.8 for RBC contamination"/>
+            <param name="complexity_limits_max" type="float" value="" optional="true" 
+                   label="Complexity Upper Limit" 
+                   help="Upper limit for cell complexity (leave empty for no limit)"/>
+            <param name="mad_complexity_limits_min" type="float" value="5" 
+                   label="MAD Complexity Lower Limit" 
+                   help="MAD below median for complexity filtering"/>
+            <param name="mad_complexity_limits_max" type="float" value="" optional="true" 
+                   label="MAD Complexity Upper Limit" 
+                   help="MAD above median for complexity (leave empty for no limit)"/>
+            
+            <!-- Top N genes limits -->
+            <param name="topNgenes_limits_min" type="float" value="" optional="true" 
+                   label="Top N Genes % Lower Limit" 
+                   help="Lower limit for percentage in top N genes (leave empty for no limit)"/>
+            <param name="topNgenes_limits_max" type="float" value="" optional="true" 
+                   label="Top N Genes % Upper Limit" 
+                   help="Upper limit for percentage in top N genes (leave empty for no limit)"/>
+            <param name="mad_topNgenes_limits_min" type="float" value="5" 
+                   label="MAD Top N Genes Lower Limit" 
+                   help="MAD below median for top N genes % filtering"/>
+            <param name="mad_topNgenes_limits_max" type="float" value="5" 
+                   label="MAD Top N Genes Upper Limit" 
+                   help="MAD above median for top N genes % filtering"/>
+            
+            <param name="n_topgenes" type="integer" value="20" min="1" 
+                   label="Number of Top Genes" 
+                   help="Number of top highly expressed genes to calculate percentage"/>
+            
+            <param name="do_doublets_filter" type="boolean" checked="true" 
+                   label="Filter Doublets" 
+                   help="Use scDblFinder to identify and remove doublet cells"/>
+        </section>
+        
+        <!-- Dimension Reduction Parameters -->
+        <section name="dimred_params" title="Dimension Reduction Settings" expanded="false">
+            <param name="plot_outliers" type="select" value="FALSE" 
+                   label="Plot Outliers" 
+                   help="Create TSNE/UMAP plots showing filtered outlier cells">
+                <option value="FALSE" selected="true">No outlier plots</option>
+                <option value="TSNE">TSNE plots</option>
+                <option value="UMAP">UMAP plots</option>
+            </param>
+            
+            <param name="group_column" type="text" value="" optional="true" 
+                   label="Grouping Column" 
+                   help="Column name for grouping in analysis (leave empty for none)"/>
+            
+            <param name="nfeatures" type="integer" value="2000" min="100" 
+                   label="Number of Variable Features" 
+                   help="Number of variable features to identify"/>
+            
+            <param name="low_cut" type="float" value="0.1" 
+                   label="Low Mean Cutoff" 
+                   help="Lower cutoff for mean expression in variable feature selection"/>
+            
+            <param name="high_cut" type="float" value="8" 
+                   label="High Mean Cutoff" 
+                   help="Upper cutoff for mean expression in variable feature selection"/>
+            
+            <param name="low_cut_disp" type="float" value="1" 
+                   label="Low Dispersion Cutoff" 
+                   help="Lower cutoff for dispersion in variable feature selection"/>
+            
+            <param name="high_cut_disp" type="float" value="100000" 
+                   label="High Dispersion Cutoff" 
+                   help="Upper cutoff for dispersion in variable feature selection"/>
+            
+            <param name="selection_method" type="select" value="vst" 
+                   label="Variable Feature Selection Method" 
+                   help="Method for selecting variable features">
+                <option value="vst" selected="true">VST (Variance Stabilizing Transformation)</option>
+                <option value="mean.var.plot">Mean Variance Plot</option>
+                <option value="dispersion">Dispersion</option>
+            </param>
+            
+            <param name="npcs" type="integer" value="30" min="2" max="100" 
+                   label="Number of Principal Components" 
+                   help="Number of principal components to compute"/>
+            
+            <param name="integratedata" type="boolean" checked="false" 
+                   label="Integrate Data" 
+                   help="Whether to integrate data across samples"/>
+            
+            <!-- Clustering parameters -->
+            <param name="clust_res_low" type="float" value="0.2" 
+                   label="Clustering Resolution Low" 
+                   help="Lower bound for clustering resolution"/>
+            
+            <param name="clust_res_high" type="float" value="1.2" 
+                   label="Clustering Resolution High" 
+                   help="Upper bound for clustering resolution"/>
+            
+            <param name="clust_res_bin" type="float" value="0.2" 
+                   label="Clustering Resolution Bin" 
+                   help="Step size for clustering resolution"/>
+            
+            <param name="only_var_genes" type="boolean" checked="false" 
+                   label="Use Only Variable Genes" 
+                   help="Use only variable genes for downstream analysis"/>
+            
+            <!-- Random seeds -->
+            <param name="seed_for_PCA" type="integer" value="42" 
+                   label="PCA Random Seed" 
+                   help="Random seed for PCA reproducibility"/>
+            
+            <param name="seed_for_TSNE" type="integer" value="1" 
+                   label="tSNE Random Seed" 
+                   help="Random seed for tSNE reproducibility"/>
+            
+            <param name="seed_for_UMAP" type="integer" value="42" 
+                   label="UMAP Random Seed" 
+                   help="Random seed for UMAP reproducibility"/>
+        </section>
+    </inputs>
+    
+    <outputs>
+        <data name="filtered_seurat" format="rds" from_work_dir="filterQC_result.rds" 
+              label="Filtered Seurat Object"/>
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="Filter QC Log"/>
+        
+        <data name="config_json" format="json" from_work_dir="config_used.json" 
+              label="Filter QC Config"/>
+    </outputs>
+    
+    <help>
+        <![CDATA[
+**Filter & QC Samples Tool**
+
+This tool filters cells and genes for each sample and generates QC plots to evaluate data before and after filtering. This is Step 2 in the basic Single-Cell RNA-seq workflow.
+
+**Input:**
+
+- **Seurat Object Input**: A list of Seurat objects for each sample (output from Process Raw Data step)
+
+**Filter Parameters:**
+
+- **Gene Filters:**
+  - **Minimum Cells per Gene**: Remove genes found in fewer than this many cells
+  - **Filter VDJ Genes**: Remove VDJ genes to prevent T-cell clustering bias
+
+- **Cell Filters:**
+  - **nFeature Limits**: Filter cells based on number of detected genes
+  - **nCounts Limits**: Filter cells based on total UMI counts
+  - **Mitochondrial Limits**: Filter cells based on mitochondrial gene percentage
+  - **Complexity Limits**: Filter cells based on genes per UMI ratio
+  - **Top N Genes Limits**: Filter cells with high percentage of reads in top genes
+  - **Doublet Filtering**: Remove doublet cells using scDblFinder
+
+- **MAD (Median Absolute Deviation) Filters**: Set dynamic thresholds based on data distribution
+
+**Dimension Reduction Settings:**
+
+- **Variable Feature Selection**: Parameters for identifying highly variable genes
+- **PCA Settings**: Number of principal components and random seed
+- **Clustering Parameters**: Resolution settings for clustering analysis
+- **Visualization**: Optional TSNE/UMAP plots showing filtered outliers
+
+**Outputs:**
+
+- **Filtered Seurat Object**: Seurat object with filtered cells and genes
+- **Filter QC Plots**: PDF containing before/after filtering comparisons including:
+  - Violin plots showing distribution changes
+  - Scatter plots of QC metrics
+  - Optional TSNE/UMAP plots highlighting filtered cells
+- **Filter QC Log**: Detailed log of filtering results and parameters
+- **Config JSON**: Configuration file used for the analysis
+
+**Quality Control Metrics:**
+
+- Number of genes per cell (nFeature_RNA)
+- Total UMI counts per cell (nCount_RNA)
+- Mitochondrial gene percentage
+- Cell complexity (log10 genes per UMI)
+- Percentage of reads in top N genes
+- Doublet classification
+
+**Filtering Strategy:**
+
+Multiple filters can be applied simultaneously. Cells must pass ALL selected filters to be retained. The tool provides both absolute thresholds and MAD-based dynamic thresholds that adapt to your data distribution.
+
+**Requirements:**
+
+This tool uses the SCWorkflow container with Seurat, scDblFinder, and related dependencies for single-cell RNA-seq filtering and quality control.
+        ]]>
+    </help>
+    
+    <citations>
+        <citation type="doi">10.1038/s41587-019-0114-2</citation>
+        <citation type="doi">10.1186/s13059-018-1603-1</citation>
+        <citation type="doi">10.1186/s13059-019-1662-y</citation>
+    </citations>
+</tool>
