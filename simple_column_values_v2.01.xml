@@ -1,0 +1,92 @@
+<tool id="simple_column_values_v2" name="Simple Column Values 2" version="2.0.1" profile="21.05">
+    <description>Select column by name and then pick from its unique values</description>
+
+    <requirements>
+        <container type="docker">nciccbr/scworkflow:v1.0.2_79db6d0</container>
+        <requirement type="package">r-base</requirement>
+    </requirements>
+    
+    <code file="enhanced_dynamic_utils.py" />
+    
+    <command detect_errors="exit_code"><![CDATA[
+        echo "Selected Column: $selected_column" > '$output' &&
+        echo "Selected Value: $selected_value" >> '$output' &&
+        echo "" >> '$output' &&
+        echo "You selected value '$selected_value' from column $selected_column" >> '$output' &&
+        Rscript --vanilla '$__tool_directory__/Percent_plot_dynamic.R' '$params_json' 2>&1 | tee tool_stdout.txt
+    ]]></command>
+
+    <configfiles>
+        <!-- Galaxy serializes all form inputs to this JSON file -->
+        <inputs name="params_json" filename="params.json" data_style="staging_path_and_source_path"/>
+    </configfiles>
+    
+    <inputs>
+        <!-- Input dataset -->
+        <param type="data" name="input_table" format="tabular,csv,tsv" 
+               label="Input data table" />
+        
+        <!-- Parameter 1: Column selection by name -->
+        <param name="selected_column" type="select" 
+               label="Select column" 
+               refresh_on_change="true"
+               dynamic_options="get_column_names_options(input_table)" />
+        
+        <!-- Parameter 2: Value from selected column -->
+        <param name="selected_value" type="select" 
+               label="Select value from column" 
+               multiple="true"
+               dynamic_options="get_column_values_options(input_table, selected_column=selected_column)" />
+    </inputs>
+    
+    <outputs>
+        <data name="output" format="txt" label="Column Value Selection Result" />
+
+        <data name="params_json_debug" format="json" from_work_dir="params.json" 
+              label="Galaxy Parameters Config"/>
+
+        <data name="percent_plot" format="png" from_work_dir="Percent_plot.png" 
+              label="Percent Plot Visualization" />
+        
+        <data name="stdout_log" format="txt" from_work_dir="tool_stdout.txt" 
+              label="Percent Plot Log"/>
+
+    </outputs>
+    
+    <tests>
+        <test>
+            <param name="input_table" value="test_data.tabular" ftype="tabular" />
+            <param name="selected_column" value="3:Category" />
+            <param name="selected_value" value="Type_A" />
+            <output name="output">
+                <assert_contents>
+                    <has_text text="Selected Column: 3:Category" />
+                    <has_text text="Selected Value: Type_A" />
+                </assert_contents>
+            </output>
+        </test>
+    </tests>
+    
+    <help><![CDATA[
+**Enhanced Column Values Selector**
+
+This tool demonstrates dynamic parameter interaction with actual column names:
+
+1. **Select a column** by its actual header name from your input dataset
+2. **Select a value** from the unique values found in that column
+
+When you change the column selection, the second parameter will automatically update to show all unique values from the newly selected column.
+
+**Improvements in v1.0.1:**
+- Shows actual column names instead of "Column 1", "Column 2", etc.
+- Reads column headers from the first row of your data file
+- Better error handling for different file formats (tab-separated, comma-separated)
+
+**Example:**
+- If your data has columns named "ID", "Score", "Category", "Description"
+- You'll see these actual names in the column selector
+- When you select "Category", you'll see the unique category values
+
+This is useful for filtering data or selecting specific categories for analysis when you want to work with meaningful column names.
+    ]]></help>
+</tool>
